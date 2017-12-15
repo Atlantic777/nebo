@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
         name = "nebo",
-        packages = ["nebo"],
+        packages = ["nebo", "nebo.handlers"],
         version = "0.1",
         url = "github.com/atlantic777/nebo",
         description = "New EC2 Big-Data Orchestrator",
