@@ -9,9 +9,6 @@ def service_handler(args, parser):
             raise ValueError("The --script flag is required to start.")
 
         service = NeboService(script=args.script)
-        # instance = EC2Handler()
-        # instance.new_instance()
-        # instance_id = instance.InstanceId
         service.start()
         instance_id = service.instance_id
 
@@ -25,7 +22,6 @@ def service_handler(args, parser):
             raise ValueError("The --instance flag is required to stop.")
 
         service = NeboService(instance_id=args.instance)
-        # instance = EC2Handler(args.instance).terminate_instance()
         service.stop()
 
 
