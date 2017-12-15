@@ -20,7 +20,7 @@ function check_true()
 
 function check_false()
 {
-    check "$1" && ( echo -e "Command: $1\n\n" "$output\n\n" && die )
+    ! check "$1" || ( echo -e "Should fail!\n Command: $1\n\n" "$output\n\n" && die )
 }
 
 # regular start
@@ -30,10 +30,10 @@ check_true "python -m nebo service --start -q --script=$TEST_DATA/service_script
 check_true "python -m nebo service --stop --instance=$output"
 
 # # incomplete start
-check_false "python -m nebo service --start" 
+check_false "python -m nebo service --start"  
 
-# incomplete stop
+# # incomplete stop
 check_false "python -m nebo service --stop"
 
-# if you are here, all tests passed
+# # if you are here, all tests passed
 exit 0

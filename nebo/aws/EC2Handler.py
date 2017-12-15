@@ -43,7 +43,7 @@ class EC2Handler:
             instance_id = self._get_instance_id(i)
             self.InstanceId = instance_id
 
-            self._ec2_wait("instance_status_ok")
+            self._ec2_wait("instance_running")
 
             return i
 
@@ -65,7 +65,7 @@ class EC2Handler:
     def start_instance(self):
         try:
             r = self.ec2.start_instances(InstanceIds=[self.InstanceId])
-            self._ec2_wait("instance_status_ok")
+            self._ec2_wait("instance_running")
             return r
         except Exception as e:
             print("An error happened in start_instance()")

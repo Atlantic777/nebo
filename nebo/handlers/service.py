@@ -1,4 +1,4 @@
-from ..aws import EC2Handler
+from ..service import NeboService
 
 
 def service_handler(args, parser):
@@ -8,9 +8,12 @@ def service_handler(args, parser):
         if args.script is None:
             raise ValueError("The --script flag is required to start.")
 
-        instance = EC2Handler()
-        instance.new_instance()
-        instance_id = instance.InstanceId
+        service = NeboService(script=args.script)
+        # instance = EC2Handler()
+        # instance.new_instance()
+        # instance_id = instance.InstanceId
+        service.start()
+        instance_id = service.instance_id
 
         if args.quiet:
             print(instance_id)
@@ -18,12 +21,12 @@ def service_handler(args, parser):
             print("Should start instance: ", instance_id)
 
     elif args.stop:
-
-        print(args.instance)
         if args.instance is None:
             raise ValueError("The --instance flag is required to stop.")
 
-        instance = EC2Handler(args.instance).terminate_instance()
+        service = NeboService(instance_id=args.instance)
+        # instance = EC2Handler(args.instance).terminate_instance()
+        service.stop()
 
 
 def setup_service_parser(service_parser):
@@ -45,7 +48,7 @@ def setup_service_parser(service_parser):
                                 )
 
     service_parser.add_argument('--quiet', '-q', action='store_true')
-    service_parser.add_argument('--init', '-i', type=str, nargs=1,
+    service_parser.add_argument('--init', '-i', type=str, nargs='?',
                                 metavar='init_setup.sh')
 
     service_parser.set_defaults(function=service_handler)

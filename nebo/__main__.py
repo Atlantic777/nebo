@@ -3,6 +3,7 @@ import argparse
 import sys
 
 import nebo.handlers
+import nebo.service
 
 
 def setup_argparse():
