@@ -2,31 +2,19 @@
 import argparse
 import sys
 
-import nebo.handlers as handlers
+import nebo.handlers
 
 
 def setup_argparse():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser("nebo")
 
     subparsers = parser.add_subparsers()
     service_parser = subparsers.add_parser('service')
     run_parser = subparsers.add_parser('run')
 
-    help_msg = "Your python script to run on the EC2 instance."
-    service_parser.add_argument('service',
-                                metavar='my_script.py',
-                                nargs=1,
-                                help=help_msg,
-                                )
-    service_parser.set_defaults(function=handlers.service.service_handler)
+    nebo.handlers.service.setup_service_parser(service_parser)
+    nebo.handlers.run.setup_run_parser(run_parser)
 
-    help_msg = "The input file to be processed on the EC2 instance."
-    run_parser.add_argument('service',
-                            metavar='my_script.py',
-                            nargs=1,
-                            help=help_msg,
-                            )
-    run_parser.set_defaults(function=handlers.run.run_handler)
     return parser
 
 
@@ -36,7 +24,12 @@ def main():
 
     parser = setup_argparse()
     args = parser.parse_args()
-    args.function(args)
+
+    try:
+        args.function(args, parser)
+    except Exception as e:
+        print(e)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
