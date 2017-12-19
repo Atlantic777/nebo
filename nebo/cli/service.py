@@ -1,4 +1,5 @@
 from ..service import NeboService
+from ..aws.S3Handler import S3Handler
 
 
 def service_handler(args, parser):
@@ -10,6 +11,9 @@ def service_handler(args, parser):
 
         if args.name is None:
             raise ValueError("The --name flag is required to start.")
+
+        app_storage = S3Handler(args.name, "apps")
+        app_storage.ensure(args.script)
 
         service = NeboService(script=args.script, init=args.init,
                               name=args.name)

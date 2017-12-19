@@ -10,10 +10,10 @@ pip-3.6 install boto3
 # NOTE: Update your "key1" and "key2" values
 mkdir /home/ec2-user/.aws
 touch /home/ec2-user/.aws/config
-echo "[default]" >> /home/ec2-user/.aws/config
+echo "[default]" > /home/ec2-user/.aws/config
 echo "output = json" >> /home/ec2-user/.aws/config
 echo "region = eu-central-1" >> /home/ec2-user/.aws/config
-echo "[default]" >> /home/ec2-user/.aws/credentials
+echo "[default]" > /home/ec2-user/.aws/credentials
 echo "aws_access_key_id = {{ ACCESS_KEY }}" >> /home/ec2-user/.aws/credentials
 echo "aws_secret_access_key = {{ SECRET_KEY }}" >> /home/ec2-user/.aws/credentials
 
@@ -33,9 +33,10 @@ su ec2-user -c "python3 -m nebo"
 # get the server script and just start it with service_name script_name
 
 # Get Pyhton script from S3 bucket
-wget {{ SCRIPT_URL }} -O /home/ec2-user/{{ SCRIPT_NAME }}
-chown ec2-user:ec2-user /home/ec2-user/{{ SCRIPT_NAME }}
+# wget {{ SCRIPT_URL }} -O /home/ec2-user/{{ SCRIPT_NAME }}
+# chown ec2-user:ec2-user /home/ec2-user/{{ SCRIPT_NAME }}
 
 # Run Python script
 # TODO write to file
-nohup su ec2-user -c "python /home/ec2-user/{{ SCRIPT_NAME }}"
+# nohup su ec2-user -c "python /home/ec2-user/{{ SCRIPT_NAME }}"
+nohup su ec2-user -c 'bash -c "python3 -m nebo.server {{ SERVICE_NAME }} {{ SCRIPT_NAME }} 2>&1 > /tmp/nebo.log"'

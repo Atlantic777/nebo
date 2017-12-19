@@ -28,7 +28,8 @@ class NeboService:
         # self.app_storage.ensure(script)
         # url = self.app_storage.get_url(script)
 
-        user_data = self._get_userdata(init, None, None)
+        user_data = self._get_userdata(init,
+                                       script_name=script, service_name=name)
         self.instance.set_userdata(user_data)
 
     def start(self):
@@ -47,8 +48,7 @@ class NeboService:
 
         S3Handler().ensure(script_filename)
 
-    def _get_userdata(self, user_provided_init,
-                      script_url=None, script_name=None):
+    def _get_userdata(self, user_provided_init, service_name, script_name):
         if user_provided_init is not None:
             with open(user_provided_init) as f:
                 user_data = ''.join(f.readlines())
@@ -64,10 +64,8 @@ class NeboService:
             context = {
                 'ACCESS_KEY': creds.access_key,
                 'SECRET_KEY': creds.secret_key,
+                'SCRIPT_NAME':  os.path.basename(script_name),
+                'SERVICE_NAME': service_name,
             }
-
-            if script_url is not None and script_name is not None:
-                context['SCRIPT_URL'] = script_url
-                context['SCRIPT_NAME'] = os.path.basename(script_name)
 
             return Template(raw_template).render(**context)
