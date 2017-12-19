@@ -29,7 +29,10 @@ class EC2Handler:
 
     def set_userdata_file(self, filename):
         with open(filename, 'r') as f:
-            self.userdata = ''.join(f.readlines())
+            self.userdata = f.read()
+
+    def set_userdata(self, data):
+        self.userdata = data
 
     def new_instance(self):
         try:

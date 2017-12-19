@@ -8,7 +8,7 @@ def service_handler(args, parser):
         if args.script is None:
             raise ValueError("The --script flag is required to start.")
 
-        service = NeboService(script=args.script)
+        service = NeboService(script=args.script, init=args.init)
         service.start()
         instance_id = service.instance_id
 

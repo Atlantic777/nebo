@@ -2,10 +2,14 @@ import os.path
 
 from .aws.EC2Handler import EC2Handler
 from .aws.S3Handler import S3Handler
+from .data import DEFAULT_INIT_TEMPLATE
+
+import boto3
+from jinja2 import Template
 
 
 class NeboService:
-    def __init__(self, script=None, instance_id=None):
+    def __init__(self, script=None, instance_id=None, init=None):
         if script is None and instance_id is None:
             raise ValueError("Either script or instance_id must be provided!")
 
@@ -15,6 +19,9 @@ class NeboService:
         self.instance_id = instance_id
         self.script = script
         self.instance = EC2Handler(InstanceId=self.instance_id)
+
+        user_data = self._get_userdata(init)
+        self.instance.set_userdata(user_data)
 
     def start(self):
         self.instance.new_instance()
@@ -31,3 +38,23 @@ class NeboService:
             raise ValueError(msg)
 
         S3Handler().ensure(script_filename)
+
+    def _get_userdata(self, user_provided_init):
+        if user_provided_init is not None:
+            with open(user_provided_init) as f:
+                user_data = ''.join(f.readlines())
+                return user_data
+        else:
+            raw_template = None
+            with open(DEFAULT_INIT_TEMPLATE) as f:
+                raw_template = f.read()
+
+            s = boto3.Session()
+            creds = s.get_credentials()
+
+            context = {
+                'ACCESS_KEY': creds.access_key,
+                'SECRET_KEY': creds.secret_key,
+            }
+
+            return Template(raw_template).render(**context)

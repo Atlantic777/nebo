@@ -2,6 +2,8 @@ output=""
 
 function die()
 {
+    msg="$1"
+    echo -e "$msg"
     exit 1
 }
 
@@ -15,25 +17,25 @@ function check()
 
 function check_true()
 {
-    check "$1" || ( echo -e "Command: $1\n\n" "$output\n\n" && die )
+    check "$1" || die "Command: $1\n\n" "$output\n\n"
 }
 
 function check_false()
 {
-    ! check "$1" || ( echo -e "Should fail!\n Command: $1\n\n" "$output\n\n" && die )
+    ! check "$1" || die "Should fail!\n Command: $1\n\n" "$output\n\n"
 }
 
 # regular start
-check_true "python -m nebo service --start -q --script=$TEST_DATA/service_script.py"
+check_true "python -m nebo service --start -q --script=$TEST_DATA/dummy_script.py"
 
 # regular stop
 check_true "python -m nebo service --stop --instance=$output"
 
-# # incomplete start
+# incomplete start
 check_false "python -m nebo service --start"  
 
-# # incomplete stop
+# incomplete stop
 check_false "python -m nebo service --stop"
 
-# # if you are here, all tests passed
+# if you are here, all tests passed
 exit 0
