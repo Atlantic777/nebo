@@ -1,8 +1,8 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
         name = "nebo",
-        packages = ["nebo", "nebo.handlers"],
+        packages = find_packages(),
         version = "0.1",
         url = "github.com/atlantic777/nebo",
         description = "New EC2 Big-Data Orchestrator",

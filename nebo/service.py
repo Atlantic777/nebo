@@ -17,11 +17,18 @@ class NeboService:
         if script is not None:
             self._upload_script(script)
 
+        if name is not None:
+            self.name = name
+
         self.instance_id = instance_id
         self.script = script
         self.instance = EC2Handler(InstanceId=self.instance_id)
+        self.app_storage = S3Handler(self.name, 'apps')
 
-        user_data = self._get_userdata(init)
+        # self.app_storage.ensure(script)
+        # url = self.app_storage.get_url(script)
+
+        user_data = self._get_userdata(init, None, None)
         self.instance.set_userdata(user_data)
 
     def start(self):
@@ -40,7 +47,8 @@ class NeboService:
 
         S3Handler().ensure(script_filename)
 
-    def _get_userdata(self, user_provided_init):
+    def _get_userdata(self, user_provided_init,
+                      script_url=None, script_name=None):
         if user_provided_init is not None:
             with open(user_provided_init) as f:
                 user_data = ''.join(f.readlines())
@@ -57,5 +65,9 @@ class NeboService:
                 'ACCESS_KEY': creds.access_key,
                 'SECRET_KEY': creds.secret_key,
             }
+
+            if script_url is not None and script_name is not None:
+                context['SCRIPT_URL'] = script_url
+                context['SCRIPT_NAME'] = os.path.basename(script_name)
 
             return Template(raw_template).render(**context)

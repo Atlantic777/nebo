@@ -3,8 +3,8 @@ set -x
 
 # Update and install boto3 library
 #yum update -y
-yum install -y awscli
-pip install boto3
+yum install -y awscli python36
+pip-3.6 install boto3
 
 # Setup boto3 configuration
 # NOTE: Update your "key1" and "key2" values
@@ -19,13 +19,23 @@ echo "aws_secret_access_key = {{ SECRET_KEY }}" >> /home/ec2-user/.aws/credentia
 
 chown -R ec2-user:ec2-user /home/ec2-user/.aws
 
-# Test boto3 through aws CLI 
+# Test boto3 through aws CLI
 su ec2-user -c 'bash -c "aws ec2 describe-instances >> /home/ec2-user/describe-instances.log"'
 
+# install nebo
+su ec2-user -c "aws s3 cp s3://nhardi-mrkirm2-releases/latest.tar.bz2 /tmp/latest.tar.bz2"
+su ec2-user -c "tar xjf /tmp/latest.tar.bz2 -C /tmp"
+su ec2-user -c "pip-3.6 install --user /tmp/nebo"
+su ec2-user -c "pip-3.6 install --user -r /tmp/nebo/requirements.txt"
+
+su ec2-user -c "python3 -m nebo"
+
+# get the server script and just start it with service_name script_name
+
 # Get Pyhton script from S3 bucket
-wget https://s3.eu-central-1.amazonaws.com/nhardi-mrkirm2-scripts/dummy_script.py -P /home/ec2-user
-chown ec2-user:ec2-user /home/ec2-user/server.py
+wget {{ SCRIPT_URL }} -O /home/ec2-user/{{ SCRIPT_NAME }}
+chown ec2-user:ec2-user /home/ec2-user/{{ SCRIPT_NAME }}
 
 # Run Python script
 # TODO write to file
-nohup su ec2-user -c "python /home/ec2-user/dummy_script.py"
+nohup su ec2-user -c "python /home/ec2-user/{{ SCRIPT_NAME }}"

@@ -7,4 +7,8 @@ unit:
 entr:
 	find -name "*.py" -o -name "*.sh" | entr -c make test FILTER=${FILTER}
 
+release:
+	tar --exclude='private' --exclude='.git' -cjf /tmp/latest.tar.bz2 ../nebo && \
+	aws s3 cp /tmp/latest.tar.bz2 's3://nhardi-mrkirm2-releases/latest.tar.bz2'
+
 .PHONY: test entr
