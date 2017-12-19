@@ -2,7 +2,7 @@
 import argparse
 import sys
 
-import nebo.handlers
+import nebo.cli
 import nebo.service
 
 
@@ -13,8 +13,8 @@ def setup_argparse():
     service_parser = subparsers.add_parser('service')
     run_parser = subparsers.add_parser('run')
 
-    nebo.handlers.service.setup_service_parser(service_parser)
-    nebo.handlers.run.setup_run_parser(run_parser)
+    nebo.cli.service.setup_service_parser(service_parser)
+    nebo.cli.run.setup_run_parser(run_parser)
 
     return parser
 
