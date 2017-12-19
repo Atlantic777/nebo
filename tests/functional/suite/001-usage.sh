@@ -1,4 +1,4 @@
-OUTPUT="$(python -m nebo)"
+OUTPUT="$(python -m nebo; python -m nebo service --help; python -m nebo run --help)"
 
 function check()
 {
@@ -9,3 +9,5 @@ function check()
 check "usage"
 check "service"
 check "run"
+check "\-\-name"
+check "\-\-list"

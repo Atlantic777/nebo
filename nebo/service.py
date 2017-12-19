@@ -9,8 +9,9 @@ from jinja2 import Template
 
 
 class NeboService:
-    def __init__(self, script=None, instance_id=None, init=None):
-        if script is None and instance_id is None:
+    def __init__(self, script=None, instance_id=None, init=None,
+                 name=None):
+        if (script is None or name is None) and instance_id is None:
             raise ValueError("Either script or instance_id must be provided!")
 
         if script is not None:

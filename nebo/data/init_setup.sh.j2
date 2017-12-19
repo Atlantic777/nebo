@@ -1,0 +1,31 @@
+#!/bin/bash
+set -x
+
+# Update and install boto3 library
+#yum update -y
+yum install -y awscli
+pip install boto3
+
+# Setup boto3 configuration
+# NOTE: Update your "key1" and "key2" values
+mkdir /home/ec2-user/.aws
+touch /home/ec2-user/.aws/config
+echo "[default]" >> /home/ec2-user/.aws/config
+echo "output = json" >> /home/ec2-user/.aws/config
+echo "region = eu-central-1" >> /home/ec2-user/.aws/config
+echo "[default]" >> /home/ec2-user/.aws/credentials
+echo "aws_access_key_id = {{ ACCESS_KEY }}" >> /home/ec2-user/.aws/credentials
+echo "aws_secret_access_key = {{ SECRET_KEY }}" >> /home/ec2-user/.aws/credentials
+
+chown -R ec2-user:ec2-user /home/ec2-user/.aws
+
+# Test boto3 through aws CLI 
+su ec2-user -c 'bash -c "aws ec2 describe-instances >> /home/ec2-user/describe-instances.log"'
+
+# Get Pyhton script from S3 bucket
+wget https://s3.eu-central-1.amazonaws.com/nhardi-mrkirm2-scripts/dummy_script.py -P /home/ec2-user
+chown ec2-user:ec2-user /home/ec2-user/server.py
+
+# Run Python script
+# TODO write to file
+nohup su ec2-user -c "python /home/ec2-user/dummy_script.py"

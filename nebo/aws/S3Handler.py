@@ -2,12 +2,14 @@ import boto3
 import os.path
 
 DEFAULT_BUCKET = "nhardi-mrkirm2-scripts"
+DEFAULT_BUCKET_PREFIX = "nhardi-mrkirm2-"
 DEFAULT_LOCATION = "eu-central-1"
 
 
 class S3Handler:
-    def __init__(self, bucket=DEFAULT_BUCKET):
-        self.bucket = bucket
+    def __init__(self, bucket=DEFAULT_BUCKET, directory=None):
+        self.bucket = DEFAULT_BUCKET_PREFIX + bucket
+        self.prefix = directory
         self.s3 = boto3.client('s3')
 
     def ensure(self, filename):
@@ -28,12 +30,16 @@ class S3Handler:
                                       "LocationConstraint": DEFAULT_LOCATION,
                                   })
         except Exception as e:
-            pass
+            print(e)
 
     def _upload(self, filename):
         key = os.path.basename(filename)
-        self.s3.upload_file(filename, DEFAULT_BUCKET, key)
-        self.s3.put_object_acl(Bucket=DEFAULT_BUCKET,
+
+        if self.prefix is not None:
+            key = self.prefix + "/" + key
+
+        self.s3.upload_file(filename, self.bucket, key)
+        self.s3.put_object_acl(Bucket=self.bucket,
                                Key=key,
                                ACL='public-read',
                                )
