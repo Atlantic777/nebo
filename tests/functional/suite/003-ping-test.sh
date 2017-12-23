@@ -1,5 +1,5 @@
 set -x
-SERVICE_SCRIPT="$DEST_DATA/dummy_service.py"
+SERVICE_SCRIPT="$TEST_DATA/dummy_script.py"
 INIT_SCRIPT="$TEST_DATA/dummy_init.sh"
 
 function die
@@ -8,7 +8,7 @@ function die
 }
 
 # start service
-INSTANCE_ID=$(python -m nebo service --start -q --script="$SERVICE_SCRIPT" --init="$INIT_SCRIPT")
+INSTANCE_ID=$(python -m nebo service --start -q --script="$SERVICE_SCRIPT" --name=test-script)
 test $? || die
 
 # aws describe

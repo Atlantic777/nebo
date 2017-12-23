@@ -14,23 +14,23 @@ class NeboService:
         if (script is None or name is None) and instance_id is None:
             raise ValueError("Either script or instance_id must be provided!")
 
-        if script is not None:
-            self._upload_script(script)
-
-        if name is not None:
-            self.name = name
-
+        self.name = name
         self.instance_id = instance_id
-        self.script = script
         self.instance = EC2Handler(InstanceId=self.instance_id)
-        self.app_storage = S3Handler(self.name, 'apps')
+
+        if self.name is not None:
+            self.app_storage = S3Handler(self.name, 'apps')
+
+        if script is not None:
+            self.script = script
+            self._upload_script(script)
+            user_data = self._get_userdata(init,
+                                           script_name=script,
+                                           service_name=name)
+            self.instance.set_userdata(user_data)
 
         # self.app_storage.ensure(script)
         # url = self.app_storage.get_url(script)
-
-        user_data = self._get_userdata(init,
-                                       script_name=script, service_name=name)
-        self.instance.set_userdata(user_data)
 
     def start(self):
         self.instance.new_instance()
@@ -39,14 +39,16 @@ class NeboService:
 
     def stop(self):
         self.instance.terminate_instance()
-        S3Handler().kill_bucket()
+
+        if self.name is not None:
+            S3Handler(self.name, "apps").kill_bucket()
 
     def _upload_script(self, script_filename):
         if not os.path.isfile(script_filename):
             msg = "Script {} does not exist.".format(script_filename)
             raise ValueError(msg)
 
-        S3Handler().ensure(script_filename)
+        S3Handler(self.name, "apps").ensure(script_filename)
 
     def _get_userdata(self, user_provided_init, service_name, script_name):
         if user_provided_init is not None:

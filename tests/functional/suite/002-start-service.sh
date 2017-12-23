@@ -26,7 +26,7 @@ function check_false()
 }
 
 # regular start
-check_true "python -m nebo service --start -q --script=$TEST_DATA/dummy_script.py"
+check_true "python -m nebo service --start -q --script=$TEST_DATA/dummy_script.py --name=test-service"
 
 # regular stop
 check_true "python -m nebo service --stop --instance=$output"
