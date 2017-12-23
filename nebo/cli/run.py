@@ -3,12 +3,8 @@ from ..client import NeboClient
 
 def run_handler(args, parent_parser):
     client = NeboClient(args.service)
-    client.send_request(args.input_file, args.output_file, args.args)
-
-    with open(args.output_file) as f:
-        print(f.read())
-
-    print("Done!")
+    url = client.send_request(args.input_file, args.args)
+    print(url)
 
 
 def setup_run_parser(run_parser):
@@ -18,6 +14,7 @@ def setup_run_parser(run_parser):
                             type=str,
                             nargs='?',
                             help=help_msg,
+                            required=True,
                             )
 
     help_msg = "The filename to be uploaded and processed."
@@ -26,14 +23,7 @@ def setup_run_parser(run_parser):
                             type=str,
                             nargs='?',
                             help=help_msg,
-                            )
-
-    help_msg = "The filename where to store the result."
-    run_parser.add_argument('--output-file',
-                            metavar='results.txt',
-                            type=str,
-                            nargs='?',
-                            help=help_msg
+                            required=True,
                             )
 
     run_parser.add_argument('--args',

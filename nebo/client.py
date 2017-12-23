@@ -12,7 +12,7 @@ class NeboClient:
         self.output_storage = S3Handler(service_name, "outputs")
         self.sqs_responses = None
 
-    def send_request(self, input_file, output_file, args=None):
+    def send_request(self, input_file, args=None):
         self.input_storage.ensure(input_file)
 
         # key should be hash
@@ -34,6 +34,6 @@ class NeboClient:
             self.output_storage.wait_for(output_key)
         else:
             resp = self.sqs_responses.get_message()
-            output_key = self.output_storage.get(resp['key'], output_file)
+            output_key = resp['key']
 
-        self.output_storage.get(output_key, output_file)
+        return self.output_storage.url(output_key)
