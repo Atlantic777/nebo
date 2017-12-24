@@ -1,5 +1,5 @@
-from ..service import NeboService
-from ..aws.S3Handler import S3Handler
+from nebo.core.service import NeboService
+from nebo.aws import S3Handler
 
 
 def service_handler(args, parser):

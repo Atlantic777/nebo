@@ -39,4 +39,4 @@ su ec2-user -c "python3 -m nebo"
 # Run Python script
 # TODO write to file
 # nohup su ec2-user -c "python /home/ec2-user/{{ SCRIPT_NAME }}"
-nohup su ec2-user -c 'bash -c "python3 -m nebo.server {{ SERVICE_NAME }} {{ SCRIPT_NAME }} 2>&1 > /tmp/nebo.log"'
+nohup su ec2-user -c 'bash -c "python3 -m nebo.core.server {{ SERVICE_NAME }} {{ SCRIPT_NAME }} 2>&1 > /tmp/nebo.log"'

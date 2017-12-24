@@ -1,4 +1,4 @@
-from ..client import NeboClient
+from nebo.core.client import NeboClient
 
 
 def run_handler(args, parent_parser):

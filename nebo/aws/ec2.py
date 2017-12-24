@@ -46,7 +46,7 @@ class EC2Handler:
             instance_id = self._get_instance_id(i)
             self.InstanceId = instance_id
 
-            self._ec2_wait("instance_running")
+            self._ec2_wait("instance_status_ok")
 
             return i
 

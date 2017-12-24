@@ -18,7 +18,6 @@ function stop_service()
 function cleanup()
 {
     stop_service
-    remove buckets
 }
 
 function die()
@@ -26,7 +25,7 @@ function die()
     msg="$1"
     echo "$msg"
 
-    cleanup
+    # cleanup
     exit 1
 }
 
@@ -37,7 +36,7 @@ function start_service()
 
 function issue_request()
 {
-    OUTPUT_URL=$(python -m nebo run --service="$SERVICE_NAME" --input-file="$INPUT_PATH")
+    OUTPUT_URL=$(python -m nebo run --service="$SERVICE_NAME" --input-file="$INPUT_PATH" --args="hello,world")
 }
 
 function check_result()

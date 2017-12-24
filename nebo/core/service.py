@@ -1,8 +1,7 @@
 import os.path
 
-from .aws.EC2Handler import EC2Handler
-from .aws.S3Handler import S3Handler
-from .data import DEFAULT_INIT_TEMPLATE
+from nebo.aws import EC2Handler, S3Handler
+from nebo.data import DEFAULT_INIT_TEMPLATE
 
 import boto3
 from jinja2 import Template

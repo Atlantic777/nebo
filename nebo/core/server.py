@@ -5,8 +5,7 @@ import json
 from multiprocessing import Process
 from time import sleep
 
-from .aws.S3Handler import S3Handler
-from .aws.SQSHandler import SQSHandler
+from nebo.aws import S3Handler, SQSHandler
 
 
 class Worker:

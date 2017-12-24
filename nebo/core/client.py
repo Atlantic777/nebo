@@ -1,8 +1,8 @@
 import os
 import json
 
-from .aws.SQSHandler import SQSHandler
-from .aws.S3Handler import S3Handler
+from nebo.aws import SQSHandler
+from nebo.aws import S3Handler
 
 
 class NeboClient:
