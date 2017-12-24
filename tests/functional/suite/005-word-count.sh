@@ -18,7 +18,7 @@ function stop_service()
 function cleanup()
 {
     stop_service
-    # remove buckets
+    remove buckets
 }
 
 function die()

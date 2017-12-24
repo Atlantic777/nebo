@@ -12,6 +12,11 @@ class Job:
 
     def work(self):
         request = json.loads(self.raw_msg)
+
+        if 'args' not in request:
+            with open(self.output_file, "w") as f:
+                f.write("Error: zero words specified!")
+
         keywords = request['args']
 
         keywords = keywords.replace(' ', '')

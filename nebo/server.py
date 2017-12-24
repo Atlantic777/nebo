@@ -3,6 +3,7 @@ import tempfile
 import os
 import json
 from multiprocessing import Process
+from time import sleep
 
 from .aws.S3Handler import S3Handler
 from .aws.SQSHandler import SQSHandler
@@ -29,6 +30,7 @@ class Worker:
 
         if msg is None:
             print("No messages")
+            sys.stdout.flush()
             return
 
         # key is hash
@@ -81,6 +83,15 @@ def _worker_thread(service_name, script_name):
         except Exception as e:
             print("The exception handler")
             print(e)
+            sys.stdout.flush()
+
+
+def _gc_thread(service_name, timeout=60):
+    while True:
+        sleep(timeout/4)
+        S3Handler(service_name, "inputs").cleanup(timeout)
+        S3Handler(service_name, "outputs").cleanup(timeout)
+        sys.stdout.flush()
 
 
 class NeboServer:
@@ -88,8 +99,7 @@ class NeboServer:
         self.name = name
         self.script = script
 
-        self.init_input_queue()
-        self.init_storage()
+        self.spawn_gc(timeout=120)
         self.spawn_workers(workers_count)
 
     def spawn_workers(self, count=1):
@@ -105,14 +115,9 @@ class NeboServer:
         for p in self.workers:
             p.join()
 
-    def create_input_queue(self):
-        pass
-
-    def init_input_queue(self):
-        pass
-
-    def init_storage(self):
-        pass
+    def spawn_gc(self, timeout=60):
+        self.gc_handle = Process(target=_gc_thread, args=(self.name, timeout,))
+        self.gc_handle.start()
 
 
 def main():

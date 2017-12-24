@@ -1,5 +1,7 @@
-import boto3
+import datetime
 import os.path
+
+import boto3
 
 DEFAULT_BUCKET_PREFIX = "nhardi-mrkirm2-"
 DEFAULT_LOCATION = "eu-central-1"
@@ -25,6 +27,7 @@ class S3Handler:
 
         self._get_or_create_bucket(self.bucket)
         self._upload(filename, key)
+        self.wait_for(self._make_key(key))
 
     def get(self, src, dst):
         # name of the file in bucket
@@ -68,7 +71,8 @@ class S3Handler:
         return False
 
     def wait_for(self, key):
-        pass
+        w = self.s3.get_waiter('object_exists')
+        w.wait(Bucket=self.bucket, Key=self._make_key(key))
 
     def url(self, key):
         url = self.s3.generate_presigned_url(ClientMethod='get_object',
@@ -78,3 +82,21 @@ class S3Handler:
                                              })
 
         return url
+
+    def cleanup(self, timeout):
+        n = datetime.datetime.now(datetime.timezone.utc)
+        print("gc triggered")
+
+        resp = self.s3.list_objects_v2(Bucket=self.bucket, Prefix=self.prefix)
+
+        if 'Contents' not in resp:
+            return
+
+        for obj in resp['Contents']:
+            td = n - obj['LastModified']
+            if td.days > 0 or td.seconds > timeout:
+                print("Remove", obj['Key'])
+                self.s3.delete_object(Bucket=self.bucket,
+                                      Key=self._make_key(obj['Key']))
+            else:
+                print("Don't remove: ", obj['Key'])

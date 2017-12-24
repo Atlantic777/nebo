@@ -36,4 +36,5 @@ class NeboClient:
             resp = self.sqs_responses.get_message()
             output_key = resp['key']
 
+        self.output_storage.wait_for(output_key)
         return self.output_storage.url(output_key)
