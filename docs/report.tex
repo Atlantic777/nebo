@@ -1,19 +1,277 @@
 \documentclass[a4paper]{article}
+\usepackage[a4paper,margin=4cm]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{tikz}
+\usepackage{listings}
+\usepackage[serbian]{babel}
+
+\lstset{
+  frame=single,
+  numbers=left,
+}
 
 \begin{document}
+
 \section{Opis zadatka}
+
+Konstruisati distribuirani sistem za računanje u oblaku. Sistem se sastoji od
+udaljenog poslužioca (jednog ili više) i korisničkog programa za zadavanje
+zahteva za obradu. Korisnički program i poslužilac razmenjuju podatke pomoću
+deljene memorije, a poruke pomoću imenovanih redova za razmenu poruka. Kao
+primer upotrebe konstruisati sistem koji omogućava prebrojavanje zadatih reči u
+proizvoljnoj tekstualnoj datoteci.
+
+Ovaj sistem treba da se izvršava u Amazon oblaku. Za deljenu memoriju
+iskoristiti S3 uslugu, a za razmenu poruka SQS. Poslužilac treba da se izvršava
+u virtuelnoj mašini, deo EC2 usluge. Potrebno je automatizovati pokretanje i
+upotrebu sistema pomoću {\em boto3} biblioteke za upravljanje Amazon oblakom iz
+programskog jezika \mbox{\em Python}.
 
 \section{Predloženo rešenje}
 
-\section{Implementacija}
+Korisniku je omogućeno da kreira novi sistem i zada proceduru za obradu.
+Omogućena je paralelna obrada, ali bez saradnje odnosno jedan zahtev obrađuje
+samo jedna jedinica za obradu. Paralelizam se javlja na nivou jedne instance
+(više procesorskih jezgara) i na nivou više EC2 instanci (više virtuelnih
+mašina).
+
+Pri pokretanju servisa klijent postavlja datoteku sa procedurom za obradu u
+deljenu memoriju. Po pokretanju servisa ta datoteka je preuzeta iz deljene
+memorije i postavljena u lokalnu memoriju virtuelne mašine. Postoji jedan red za
+razmenu poruka koji služi za izdavanje novih zahteva za obradu. Iz tog reda više
+virtuelnih mašina može istovremeno da preuzima i obrađuje različite zahteve.
+Rezultat obrade se smešta u izlaznu datoteku i postavlja u deljenu memoriju.
+Putanja do datoteke sa rezultatom je 
+
+\section{Izvedba rešenja}
+
+Sistem je podeljen u tri sloja:
+
+\begin{enumerate}
+  \item nebo.aws - Komponente nižeg nivoa za upravljanje resursima u oblaku.
+  \item nebo.core - Jezgro, funkcionalne jedinice visokog nivoa.
+  \item nebo.cli - Konzolna korisnička sprega.
+\end{enumerate}
+
+\subsection{nebo.aws}
+
+Ova komponenta sistema sadrži rukovaoce resursima. Oslanja se neposredno na
+boto3 biblioteku. Omogućeno je upravlanje sledećim resursima:
+
+\begin{itemize}
+\item EC2 - virtuelne mašine
+\item S3 - deljena memorija
+\item SQS - komunikacioni kanali
+\end{itemize}
+
+Funkcionalnisti su dodavane po potrebi i generalizacija nije bila u cilju. Ovo
+je pomoćna biblioteka namenjena samo za upotrebu u ovom projektu. Sledi pregled
+funkcionalnosti za sva tri rukovaoca.
+
+{\bf EC2Handler} je rukovalac koji omogućava kreiranje novih virtuelnih mašina
+ili upravljanje postojećim. Za upravljanje postojećom instancom potrebno je
+proslediti konstruktoru parametar InstanceId. Pri kreiranju novih virtuelnih
+mašina moguće je izabrati tip insetance prema raspoloživim resursima (količina
+radne memorije, broj procesora i drugo) i otisak operativnog sistema (system
+image, AMI). Podrazumevani tip instance je t2.micro, a podrazumevani otisak
+operativnog sistema je Amazon Linux (ami-bf2ba8d0) koji su određeni u
+nebo/aws/ec2.py datoteci. Kreiranje EC2Handler objekta i kreiranje instance su
+dva radzvojena koraka. Zahtev za kreiranje virtulne mašine je izdat tek nakon
+poziva new\_instance() metode koji je blokirajuć i završiće se tek nakon što je
+mašina potpuno funkcionalna (instance status ok). Pre pokretanja nove mašine
+moguće je postaviti korisničku ``skriptu'' (user data) koja je izvršena po
+pokretanju sistema. Omogućeno je upravljanje postojećim virtuelnim mašinama
+(zaustavljanje, pokretanje, uklanjanje, opširan opis, provera da li još uvek
+postoji).
+
+{\bf S3Handler} je rukovalac namenjen za upravljanje S3 uslugama, odnosno
+deljenom memorijom. Deljena memorija u ovom sistemu je određena nazivom servisa
+i lokacijom odnosno prefiksom. Prefiks ima ulogu logičkog poddirektorijuma
+unutar S3 korpe. Omogućene su operacije psotavljanje datoteke na zadatu
+lokaciju, dobavljanje datoteke, pražnjenje i uklanjanje korpe, čekanje da se
+objekat pojavi na očekivanoj lokaciji, dobavljanje (potpisane) adrese za
+preuzimanje datoteke (presigned URL) i pospremanje korpe odnosno lokacije
+(brisanje zaostalih datoteka, garbage collection). Napomena: nije neophodno
+izričito napraviti novu korpu već je to podrazumevano i izvodi se samo ukoliko
+je potrebno.
+
+{\bf SQSHandler} je rukovalac namanjen za upravljanje SQS uslugama, redovima za
+razmenu poruka. Slično kao i za S3Handler, moguće je napraviti red koji se
+odnosi na servis i dodatno ima naziv. Omogućeno je slanje i prijem tačno jedne
+poruke po pozivu odgovarajuće metode.
+
+\subsection{nebo.core}
+
+{\bf NeboService} objedinjuje korake za stvaranje novog servisa. Ovi koraci
+podrazumevaju sledeće operacije:
+
+\begin{enumerate}
+\item Kreiranje odgovarajućih korpi u deljenoj memoriji.
+\item Postavljanje korisničkog programa u deljenu memoriju.
+\item Priprema skripte za inicijalizaciju (init\_setup.sh)
+\item Pokretanje nove EC2 instance.
+\end{enumerate}
+
+{\bf NeboClient} objedinjuje korake za izdavanje novog zahteva za obradu. Ovi
+koraci su:
+
+\begin{enumerate}
+\item Postavljanje ulazne datoteke u deljenu memoriju servisa.
+\item Izdavanje novog zahteva za obradu putem reda za razmenu poruka.
+\item Čekanje odgovora na povratnom kanalu.
+\end{enumerate}
+
+{\bf NeboServer} je samostalna komponenta za obradu novih korisničkih zahteva i
+uklanjane zaostalih datoteka iz deljne memorije. Ova komponenta se izvršava na
+svakoj EC2 instanci i sastoji iz dva dela, poslužioca i korisničkog programa.
+Poslužilac je zajednički za sve EC2 instance, nezavisno od korisničkog programa
+i vrste servisa. NeboServer je komponenta koja može da pokrene više procesa za
+obradu (Worker) u kojima će biti obrađeni pristigli zahtevi pomoću korisničkog
+programa. Korisnički program se pri pokretanju instance dobavlja iz deljene
+memorije i učitava pri inicijalizaciji NeboServer komponente.
+
+Obrada jednog zahteva sastoji se od sledećih koraka:
+
+\begin{enumerate}
+\item Čitanje jednog zahteva i uklanjanja te poruke iz reda za čekanje
+\item Preuzimanja ulazne datoteke iz deljene memorije i postavljanje u lokalnu
+  memoriju.
+\item Kreiranje izlazne datoteke u lokalnoj memoriji.
+\item Instanciranje novog objekta zadatka tako što su prosleđene putanje do te
+  dve datoteke.
+\item Pokratanje obrade.
+\item Po završetku obrade očekivano je da su rezultat ili poruka o grešci
+  upisani u izlaznu datoteku. Ova datoteka je potom postavljena u deljenu
+  memoriju.
+\item Lokalne datoteke (izlazna i ulazna) su uklonjene.
+\item Klijent koji je izdao zahtev za obradu je obavešten o završetku obrade.
+  Povratnim kanalom mu je prosleđena putanja do izlazne datoteke u deljenoj memoriji.
+\end{enumerate}
+
+{\bf NeboJob} je programska sprega koja ograničava svaki korisnički program. Ova
+sprega je opisana putanjom do ulazne i izlazne datoteke i metodom za samu
+obradu. Ovakva sprega omogućava korisnicima da sami definišu programe za obradu
+proizvoljne složenosti, a ipak ih oslobađa svih režijskih procedura koje su već
+ugrađene u samu NeboServer komponentu.
+
+\subsection{nebo.cli}
+
+Komponente iz nebo.cli paketa se direktno oslanjaju i oslikavaju komponente iz
+nebo.core paketa. U ovom paketu je opisana tekstualna korisnička sprega
+zasnovana na standardnoj Python 3 biblioteci - argparse.
 
 \section{Testiranje i verifikacija}
 
+Ceo projekat je pokriven funkcionalnim (end-to-end) testovima zapisanih u
+obliku bash skripti. Napisan je jednostavan pokretač testova koji se zaustavlja
+u slučaju greške i ispisuje detaljan izveštaj. Predviđeno je da jedan test bude
+opisan u jednoj datoteci. Dostupni su sledeći testovi:
+
+\begin{itemize}
+\item {\bf 000 - Smoke test}, provera ispravnosti međuzavisnosti između paketa u
+  celom sistemu. Brz test koji proverava najjednostavnije propuste, da li sistem uopšte
+  može da se pokrene.
+  \item {\bf 001 - Usage}, provera ispravnosti komandi i poruke za pomoć.
+  \item {\bf 002 - Start service}, provera ispravnosti komandi za pokretanje i
+    zaustavljanje servisa.
+  \item {\bf 003 - Ping test}, pokretanje servisa uz kreiranje EC2 instance i
+    provera veze do te instance slanjem ping paketa.
+  \item {\bf 004 - Upload script}, provera prisutnosti korisničkog programa u
+    deljenoj memoriji pri pokretanju servisa.
+  \item {\bf 005 - Word count}, potpuna provera ispravnosti servisa na primeru
+    programa za brojanje reči. Uključuje proveru rezultata.
+  \item {\bf 006 - IO Cleanup}, provera ispravnosti uklanjanja zaostalih
+    datoteka u deljenoj memoriji.
+\end{itemize}
+
+Pokretanje svih testova je moguće putem komande make test. Moguće je suziti
+izbor testova regularnim izrazom zadatim u FILTER argumentu. Na primer make test FILTER=count.
+
 \section{Organizacija repozitorijuma i pakovanje koda}
+
+Repozitorijum je organizovan tako da predstavlja Python paket koji je moguće
+instalirati i distribuirati. Instalacija je moguća pomoću alata pip, a moguće ga
+je postaviti i u centralni repozitorijum Python paketa (PyPI). Pojedinosti ovog
+paketa su određene u datoteci setup.py u korenu repozitorijuma. Pri instalaciji
+nebo paketa postavlja se i izvršna datoteka pod nazivom nebo, a koja je
+definisana \_\_main\_\_.py datotekom u nebo poddirektorijumu. Sve zavisnosti su
+navedene u requirements.txt datoteci, kao standardni način za navođenje zavisnosti.
+
+Sam izvorni kod se nalazi u nebo direktorijumu. Podela je izvršena po paketima,
+a svaki direktorijum je i Python paket. To je određeno \_\_init\_\_.py datotekama.
+Paketi (moduli) u okviru nebo paketa oslikavaju arhitekturu sistema. To su aws,
+cli i core paketi. Pored ova tri osnovna paketa, postoji i data paket koji ne
+sadrži Python izvršni kod. Ovde se nalaze samo init\_setup.sh.j2 skripta i primer
+posla (test\_job.py). Ove datoteke se distribuiraju uz izvorni kod i važni su za
+rad sistema. 
+
+Dokumentacija (ovaj dokument) se nalazi u docs poddirektorijumu. Dokumentaciju
+je moguće generisati make docs komandom. Iskorišćen je LaTeX sistem za rad sa
+dokumentima i neophodan je LaTeX prevodilac.
+
+Testovi se nalazi unutar tests direktorijuma. Ovaj direktorijum je podeljen na
+dva dela, podatke (data) i funkcionalne testove (functional). Polazna tačka za
+pokretanje testova je nebo/tests/functional/run.sh skripta a testovi se nalaze
+unutar suite direktorijuma. Izlazni kod skripte (exit code) određuje da li je
+test uspešan ili nije.
+
+Rad na projektu je olakšan Makefile datotekom u kojoj su definisani često
+potrebni zadaci. Omogućeni zadaci su:
+
+\begin{itemize}
+  \item test - izvršavanje funkcionalnih testova (uz FILTER parametar)
+  \item entr - izvršavanje testova nakon svake promene (uz FILTER parametar,
+    pomoću alata entr)
+  \item release - objavljivanje nove verzije projekta u namenjenoj unapred
+    određenoj S3 korpi. Ovaj korak je važan za rad init\_setup.sh skripte.
+  \item docs - generisanje dokumentacija
+\end{itemize}
 
 \section{Primer upotrebe}
 
-\section{Plan za dalji razvoj}
+Prvo je potrebno implementirati novu proceduru za obradu podataka. U nastavku se
+nalazi jedan primer.
+
+\mbox{
+\lstinputlisting[language=Python,caption=Primer korisničke procedure za obradu podataka]{../tests/data/word_count_script.py}
+}
+
+\section{Nedostaci i ideje za dalji razvoj}
+
+Pojedine parametre nije moguće postaviti pomoću tekstualnog korisničkog
+interfejsa. Na primer, nije moguće izabrati otisak operativnog sistema, tip
+instance, frekvenciju i period zastarenja pri čišćenju zaostalih podataka, tačan
+prefiks za naziva S3 korpi i redova za razmenu poruka i drugi. Podrška za
+postavljanje svih ovih parametara postoji u kodu, a Python biblioteka argparse
+omogućava proširenje korisničkog interfejsa bez većih izmena. Ove izmene samo
+nisu bile na najvišem prioritetu i ostavljene su kao mogućnost za dalji razvoj.
+
+Funkcionalni testovi proveravaju ispravnost celog sistema, ali troše resurse.
+Iako su ovakvi testovi važni za proveru ispravnosti, uvođenje finijih testova
+(unit testovi) bi doprinelo proveri pouzdanosti sistema, smanjilo potrošnju
+resursa i ubrzalo razvoj. Jedan od problema koji je potrebno rešiti pre uvođenja
+ovakvih testova je maskiranje (eng. mock) Amazon servisa.
+
+Ograničen nivo zaštite od neispravnih korisničkih procedura za obradu postoji.
+Ova zaštita se sastoji od provere izuzetaka pri obradi jednog zahteva. Ukoliko
+pri obradi jednog zahteva dođe do problema, sledeći zahtev će ipak moći da bude
+obrađen. Prostor za unapređenje postoji u smislu zaštite od zlonamernih
+procedura za obradu. Na primer, obrada koja se nikad ne završava, obrada koja
+zauzima svu ili veliki deo lokalne memorije, obrada koja traje predugo i zauzima
+procesorsko vreme ili radnu memoriju. Ovakav vid zaštite i izolacije je moguće
+izvesti na primer pomoću mogućnosti Linux jezgra, pre svega kontrolnih grupa
+(cgroups) i imenskih prostora (namespaces), po ugledu na popularne Linux
+kontejnere.
+
+Jedno važno unapređenje je evidencija o pokrenutim servisima i instancama. Ova
+evidencija bi trebala da bude vidljiva svim korisnicima i administratorima
+sistema. Jedno predloženo rešenje je da se iskoriste S3 korpe i u njih smeštaju
+JSON datoteke. Ovakva evidencij nije bezbedna za konkurentni pristup, ali može
+da predstavi prednosti koje donosi ovakva mogućnost. Pouzdaniji način je da se
+iskoristi baza podataka koja je predviđena za konkurentni pristup. Uvođenje
+evidencije o zauzetim resursima potom otvara vrata i za propisno uklanjanje svih
+zauzetih resursa (zauzetih kanala za razmenu poruka i S3 korpi).
 
 \section{Zaključak}
 
