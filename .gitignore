@@ -5,3 +5,4 @@ private
 docs/*
 !docs/*.tex
 .#*
+!docs/naslovna.pdf

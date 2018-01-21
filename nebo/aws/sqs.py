@@ -44,3 +44,6 @@ class SQSHandler:
             self.queue_name,
         ])
         return name
+
+    def delete(self):
+        self.client.delete_queue(QueueUrl=self.url)

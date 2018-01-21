@@ -2,6 +2,7 @@ import sys
 import tempfile
 import os
 import json
+import uuid
 from multiprocessing import Process
 from time import sleep
 
@@ -35,6 +36,7 @@ class Worker:
         # key is hash
         dmsg = json.loads(msg)
         key = dmsg['input_file_key']
+        output_key = uuid.uuid4().hex
 
         # such file is already processed by this service
         if self.output_data_storage.exists(key):
@@ -48,8 +50,8 @@ class Worker:
         task = self.Job(input_file, output_file, msg)
         task.work()
 
-        self.output_data_storage.ensure(output_file, key)
-        result_url = self.output_data_storage.url(output_file)
+        self.output_data_storage.ensure(output_file, output_key)
+        result_url = self.output_data_storage.url(output_key)
         print("results uploaded")
 
         if 'response_queue' in dmsg:
@@ -69,8 +71,12 @@ class Worker:
         import job
         self.Job = job.Job
 
-    def notify_client(self, queue_url, reuslt_url):
-        pass
+    def notify_client(self, queue_name, result_url):
+        response_queue = SQSHandler(self.name,
+                                    queue_name)
+
+        msg = {'key': result_url}
+        response_queue.send_message(json.dumps(msg))
 
 
 def _worker_thread(service_name, script_name):

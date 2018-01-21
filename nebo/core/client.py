@@ -1,12 +1,13 @@
 import os
 import json
+import uuid
 
-from nebo.aws import SQSHandler
-from nebo.aws import S3Handler
+from nebo.aws import SQSHandler, S3Handler
 
 
 class NeboClient:
     def __init__(self, service_name):
+        self.service_name = service_name
         self.sqs_requests = SQSHandler(service_name, "input")
         self.input_storage = S3Handler(service_name, "inputs")
         self.output_storage = S3Handler(service_name, "outputs")
@@ -15,26 +16,28 @@ class NeboClient:
     def send_request(self, input_file, args=None):
         self.input_storage.ensure(input_file)
 
-        # key should be hash
+        response_queue_id = uuid.uuid4().hex
+        self.sqs_responses = SQSHandler(self.service_name,
+                                        response_queue_id)
+
         input_key = os.path.basename(input_file)
         msg = {
             'input_file_key': input_key,
             'args': args,
+            'response_queue': self.sqs_responses.queue_name,
             }
 
-        if self.sqs_responses is not None:
-            msg['response_queue'] = self.sqs_responses.url
-
-        resp = self.sqs_requests.send_message(json.dumps(msg))
+        self.sqs_requests.send_message(json.dumps(msg))
 
         output_key = None
 
-        if self.sqs_responses is None:
-            output_key = input_key
-            self.output_storage.wait_for(output_key)
-        else:
-            resp = self.sqs_responses.get_message()
+        resp = self.sqs_responses.get_message()
+        self.sqs_responses.delete()
+
+        if resp is not None:
+            resp = json.loads(resp)
+
+        if resp is not None and 'key' in resp:
             output_key = resp['key']
 
-        self.output_storage.wait_for(output_key)
-        return self.output_storage.url(output_key)
+        return output_key

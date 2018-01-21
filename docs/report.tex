@@ -5,14 +5,23 @@
 \usepackage{tikz}
 \usepackage{listings}
 \usepackage[serbian]{babel}
+\usepackage{pdfpages}
 
 \lstset{
   frame=single,
   numbers=left,
 }
 
+\usetikzlibrary{fit,positioning}
+
 \begin{document}
 
+\includepdf{naslovna.pdf}
+
+
+\tableofcontents
+
+\newpage
 \section{Opis zadatka}
 
 Konstruisati distribuirani sistem za računanje u oblaku. Sistem se sastoji od
@@ -41,9 +50,19 @@ deljenu memoriju. Po pokretanju servisa ta datoteka je preuzeta iz deljene
 memorije i postavljena u lokalnu memoriju virtuelne mašine. Postoji jedan red za
 razmenu poruka koji služi za izdavanje novih zahteva za obradu. Iz tog reda više
 virtuelnih mašina može istovremeno da preuzima i obrađuje različite zahteve.
-Rezultat obrade se smešta u izlaznu datoteku i postavlja u deljenu memoriju.
-Putanja do datoteke sa rezultatom je 
+Rezultat obrade se smešta u izlaznu datoteku i postavlja nazad u deljenu
+memoriju. Kada korisnik zadaje novi zahtev za obradu, korisnički program prvo
+postavlja tekstualnu datoteku u deljenu memoriju. Zatim se kreira poruka zahteva
+za koju se očekuje da bude kodirana u JSON formatu i sadrži barem ključ
+``input\_file\_key'' i naziv reda za razmenu porua (``response\_queue\_name'')
+za javljanje kada je obrada završena i gde je rezultat smešten. Ostali ključevi
+su zanemareni i cela poruka je prosleđena proceduri za obradu kao sirov tekst.
+Datoteka sa rezultatom obrade je smeštena u deljenu memoriju u korpu za izlazne
+datoteke pod nasumično generisanim ključem. Poslužilac prenosi informaciju o tom
+ključu do klijenta putem odgovarajućeg reda. Po prijemu poruke odgovora, klijent
+zatvara taj red za razmenu poruka.
 
+\newpage
 \section{Izvedba rešenja}
 
 Sistem je podeljen u tri sloja:
@@ -53,6 +72,19 @@ Sistem je podeljen u tri sloja:
   \item nebo.core - Jezgro, funkcionalne jedinice visokog nivoa.
   \item nebo.cli - Konzolna korisnička sprega.
 \end{enumerate}
+
+\hspace{0.3\textwidth}
+\resizebox{0.3\textwidth}{!}{
+  \begin{tikzpicture}
+    \tikzstyle{my_node} = [minimum width=6cm,minimum height=1cm,draw=black]
+
+    \node[my_node] (cli)  {nebo.cli};
+    \node[my_node,below=0.2cm of cli] (core) {nebo.core};
+    \node[my_node,below=0.2cm of core] (aws)  {nebo.aws};
+    \node[my_node,below=0.2cm of aws,fill=gray!30](boto) {boto3};
+
+  \end{tikzpicture}
+}
 
 \subsection{nebo.aws}
 
@@ -64,6 +96,7 @@ boto3 biblioteku. Omogućeno je upravlanje sledećim resursima:
 \item S3 - deljena memorija
 \item SQS - komunikacioni kanali
 \end{itemize}
+
 
 Funkcionalnisti su dodavane po potrebi i generalizacija nije bila u cilju. Ovo
 je pomoćna biblioteka namenjena samo za upotrebu u ovom projektu. Sledi pregled
@@ -163,7 +196,7 @@ zasnovana na standardnoj Python 3 biblioteci - argparse.
 
 \section{Testiranje i verifikacija}
 
-Ceo projekat je pokriven funkcionalnim (end-to-end) testovima zapisanih u
+Ceo projekat je pokriven funkcionalnim (end-to-end) testovima zapisanim u
 obliku bash skripti. Napisan je jednostavan pokretač testova koji se zaustavlja
 u slučaju greške i ispisuje detaljan izveštaj. Predviđeno je da jedan test bude
 opisan u jednoj datoteci. Dostupni su sledeći testovi:
@@ -228,14 +261,46 @@ potrebni zadaci. Omogućeni zadaci su:
   \item docs - generisanje dokumentacija
 \end{itemize}
 
+\newpage
 \section{Primer upotrebe}
 
 Prvo je potrebno implementirati novu proceduru za obradu podataka. U nastavku se
 nalazi jedan primer.
 
-\mbox{
 \lstinputlisting[language=Python,caption=Primer korisničke procedure za obradu podataka]{../tests/data/word_count_script.py}
-}
+
+Nakon što je procedura za obradu obezbeđena, moguće je kreirati servis. Novi
+servis se kreira komandom u sledećem formatu:
+
+\begin{lstlisting}[language=bash,breaklines=true,numbers=none]
+  nebo service --start --script=''procedura.py'' \
+               --name=''ime-servisa''
+\end{lstlisting}
+
+Pokretanje ove komande će postaviti korisnički program u deljenu memoriju,
+pokrenuti novu instancu sa odgovarajućom init skriptom. Postoji podrazumevana
+skripta za inicijalizaciju koja je parametrizovana priprema sistem. Korisnik ima
+mogućnost da izabere drugu skriptu za inicijalizaciju. Podrazumevana skripta za
+inicijalizaciju se završava pokretanjem nebo servera (nebo.core.NeboServer) koji
+osluškuje nove zahteve za obradu i obrađuje ih zadatom procedurom. Ime reda za
+razmenu poruka koji je namenjen za zadavanje novih zahteva za obradu je određeno
+imenom servisa, sufiksom ``input'' i unapred postavljenim prefiksom koji je
+postavlen u izvornom kodu u datoteci nebo/aws/sqs.py (na primer korisničko ime).
+Izlaz ove komande je identifikacioni broj nove instance. Ovaj broj može kasnije
+da se iskoristi za zaustavljanje instance.
+
+Novi zahtevi se zadaju sledećom komandom:
+
+\begin{lstlisting}[language=bash,breaklines=true,numbers=none]
+  nebo run --service=''ime-servisa'' \
+           --input-file=''ulazna-datoteka.txt'' \
+           --args=''arg1,arg2''
+\end{lstlisting}
+
+Ova komanda ispisuje putanju (URL) do izlazne datoteke koja je smeštena u
+deljenoj memoriji (S3 korpa namenjena za izlazne datoteke). Ukoliko je pri
+obradi došlo do problema, informacija o grešci je zapisana u izlaznu datoteku.
+
 
 \section{Nedostaci i ideje za dalji razvoj}
 
@@ -267,12 +332,28 @@ kontejnere.
 Jedno važno unapređenje je evidencija o pokrenutim servisima i instancama. Ova
 evidencija bi trebala da bude vidljiva svim korisnicima i administratorima
 sistema. Jedno predloženo rešenje je da se iskoriste S3 korpe i u njih smeštaju
-JSON datoteke. Ovakva evidencij nije bezbedna za konkurentni pristup, ali može
+JSON datoteke. Ovakva evidencija nije bezbedna za konkurentni pristup, ali može
 da predstavi prednosti koje donosi ovakva mogućnost. Pouzdaniji način je da se
 iskoristi baza podataka koja je predviđena za konkurentni pristup. Uvođenje
 evidencije o zauzetim resursima potom otvara vrata i za propisno uklanjanje svih
 zauzetih resursa (zauzetih kanala za razmenu poruka i S3 korpi).
 
+Sistem je trenutno organizovan oko deljene memorije za svaki servis. U
+komunikaciji se razmenjuju samo nazivi resursa. Podrazumevano je da korisnik
+može da upisuje datoteke barem u korpu za ulazne datoteke. Jedno od mogućih
+unapređenja je da se umesto naziva resursa razmenjuju pune putanje. Prednosti
+koje donosi ovo unapređenje su da korisnik može da zatraži obradu datoteke kokja
+se nalazi bilo gde na mreži, a ne obavezno u deljenoj memoriji sistema.
+
+\newpage
 \section{Zaključak}
+
+Sistem zadovoljava zadate zahteve. Moguća je analiza proizvoljne tekstualne
+datoteke. U izradi su upotrebljene usluge Amazon oblaka. Konstruisano rešenje
+ima osobine distribuiranog sistema, omogućava skaliranje i rad sa mnogo
+klijenata. Sistem je izveden tako da su moguće dalje nadogradnje i proširenja
+funkcionalnosti. Jedna od osnovnih funkcionalnosti ovog rešenja je jednostavna
+zamena procedure za obradu praktično bez dodatnog režijskog koda. Sistem je
+testiran i dokumentovan.
 
 \end{document}

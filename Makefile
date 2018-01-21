@@ -1,14 +1,14 @@
 test:
 	bash tests/functional/run.sh ${FILTER}
 
-unit:
-	bash tests/unit/run.sh
-
 entr:
 	find -name "*.py" -o -name "*.sh" | entr -c make test FILTER=${FILTER}
 
 release:
-	tar --exclude='private' --exclude='.git' -cjf /tmp/latest.tar.bz2 ../nebo && \
+	tar --exclude='private' --exclude='.git' --exclude="__pycache__" -cjf /tmp/latest.tar.bz2 ../nebo && \
 	aws s3 cp /tmp/latest.tar.bz2 's3://nhardi-mrkirm2-releases/latest.tar.bz2'
 
-.PHONY: test unit entr release
+docs:
+	pdflatex --output-directory=docs docs/report.tex 
+
+.PHONY: test entr release docs

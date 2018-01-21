@@ -32,7 +32,7 @@ check_true "python -m nebo service --start -q --script=$TEST_DATA/dummy_script.p
 check_true "python -m nebo service --stop --instance=$output"
 
 # incomplete start
-check_false "python -m nebo service --start"  
+check_false "python -m nebo service --start"
 
 # incomplete stop
 check_false "python -m nebo service --stop"

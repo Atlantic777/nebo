@@ -1,15 +1,15 @@
 from setuptools import setup, find_packages
 
 setup(
-        name = "nebo",
-        packages = find_packages(),
-        version = "0.1",
-        url = "github.com/atlantic777/nebo",
-        description = "New EC2 Big-Data Orchestrator",
-        author = "Nikola Hardi",
-        author_email = "atlantic777@lugons.org",
-        keywords = ["aws", "ec", "big-data", "distributed computing"],
-        classifiers = [
+        name="nebo",
+        packages=find_packages(),
+        version="0.1",
+        url="github.com/atlantic777/nebo",
+        description="New EC2 Big-Data Orchestrator",
+        author="Nikola Hardi",
+        author_email="atlantic777@lugons.org",
+        keywords=["aws", "ec", "big-data", "distributed computing"],
+        classifiers=[
             "Programming Language :: Python",
             "Programming Language :: python :: 3",
             "Development Status :: 4 - Beta",

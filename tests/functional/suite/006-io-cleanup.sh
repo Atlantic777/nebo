@@ -5,7 +5,7 @@ DEFAULT_BUCKET="nhardi-mrkirm2-$SERVICE_NAME"
 DEFAULT_SCRIPT="word_count_script.py"
 DEFAULT_URL="https://s3.eu-central-1.amazonaws.com/$DEFAULT_BUCKET/apps/$DEFAULT_SCRIPT"
 INPUT="sample_input.txt"
-OUTPUT="$INPUT"
+OUTPUT=".txt"
 
 function stop_service()
 {
@@ -27,7 +27,7 @@ function start_service()
 
 function issue_request()
 {
-    python -m nebo run --service="$SERVICE_NAME" --input-file="$TEST_DATA/$INPUT" --args="hello,world"
+    OUTPUT_URL=$(python -m nebo run --service="$SERVICE_NAME" --input-file="$TEST_DATA/$INPUT" --args="hello,world")
 }
 
 function check_input()
@@ -37,7 +37,7 @@ function check_input()
 
 function check_output()
 {
-    aws s3 ls s3://$DEFAULT_BUCKET/outputs/ | grep -i "$OUTPUT"
+    curl -f -s ${OUTPUT_URL}
 }
 
 start_service || die "can't start the service"
